@@ -1,0 +1,52 @@
+pipeline {
+    agent {
+        node {
+            label 'JavaGroup'
+        }
+    }
+
+    environment {
+        GIT_REPO = 'https://github.com/16BitPixel/GeminiApp.git'
+        // Add environment variables for Tomcat credentials and URL
+        TOMCAT_CREDENTIALS = 'tomcat-manager-creds'
+        TOMCAT_URL = 'http://localhost:8080' // Change this to your Tomcat server's URL and port
+        TOMCAT_PATH = '/usr/share/apache-tomcat' // Root context. Use '/yourapp' for a sub-path.
+    }
+
+    stages {
+        stage('Checkout') {
+            steps {
+                echo "Cloning repo...."
+                git url: "${GIT_REPO}", branch: 'main'
+            }
+        }
+
+        stage('Build and Test') {
+            steps {
+                echo "Building Java application and running tests..."
+                sh 'mvn clean package'
+            }
+            post {
+                always {
+                    junit 'target/surefire-reports/*.xml'
+                }
+            }
+        }
+
+        stage('Deploy') {
+            steps {
+                script {
+                   //def warFile = "target/*.war"
+                    echo "Deploying application to Tomcat. URL: ${TOMCAT_URL}, Path: ${TOMCAT_PATH}"
+                    sh ''' pwd '''
+                    deploy adapters: [tomcat9(
+                        credentialsId: TOMCAT_CREDENTIALS,
+                        path: '',
+                        url: TOMCAT_URL
+                    )],
+                     war: 'target/JtProject.war'
+                }
+            }
+        }
+    }
+}
